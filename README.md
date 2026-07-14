@@ -18,3 +18,13 @@ Not yet published to the Play Store — currently in final release-signing and Q
   <img src="screenshots/03-qiblah.png" width="180" />
   <img src="screenshots/04-prayer-times.png" width="180" />
 </p>
+
+## Tech Stack
+
+- **Kotlin, Jetpack Compose** — fully declarative UI, no XML layouts
+- **Hilt** — dependency injection across managers/repositories and the Glance widgets
+- **Glance** — 5 home-screen widgets sharing the same data layer as the app
+- **Gradle version catalogs** — centralized dependency versions across app + widget modules
+- **CoreLocation-equivalent (`FusedLocationProviderClient`)** — Qiblah bearing and prayer-time geolocation
+- **Media3** — Quran recitation playback with background audio support
+- **Release signing pipeline** — keystore-based signing config with an environment-variable fallback for CI, so `assembleRelease` produces a signed build without committing secrets
