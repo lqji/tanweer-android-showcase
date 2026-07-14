@@ -9,3 +9,12 @@ screen-by-screen against the original as a living spec.
 > without exposing the codebase.
 
 Not yet published to the Play Store — currently in final release-signing and QA passes.
+
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/01-home.png" width="180" />
+  <img src="screenshots/02-mushaf-reader.png" width="180" />
+  <img src="screenshots/03-qiblah.png" width="180" />
+  <img src="screenshots/04-prayer-times.png" width="180" />
+</p>
