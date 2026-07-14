@@ -105,3 +105,13 @@ device locale.
 (e.g. text reflow while scrubbing) recreated the pointer input handler and silently
 ate the touch-up event, leaving the drag stuck. Fixed by decoupling the gesture key
 from layout-dependent state so a relayout mid-gesture no longer cancels it.
+
+## More from this developer
+
+- [Tanweer for iOS](https://github.com/lqji/tanweer-ios-showcase) — the original, native Swift/SwiftUI app
+- [Type Faster](https://github.com/lqji/type-faster-showcase) — a typing test with real-time multiplayer racing
+- [Full portfolio →](https://github.com/lqji/portfolio)
+
+---
+
+Built and maintained by **Ahmed Abdullah**.
