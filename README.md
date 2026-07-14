@@ -28,3 +28,44 @@ Not yet published to the Play Store — currently in final release-signing and Q
 - **CoreLocation-equivalent (`FusedLocationProviderClient`)** — Qiblah bearing and prayer-time geolocation
 - **Media3** — Quran recitation playback with background audio support
 - **Release signing pipeline** — keystore-based signing config with an environment-variable fallback for CI, so `assembleRelease` produces a signed build without committing secrets
+
+## Architecture
+
+```mermaid
+graph TD
+    subgraph "Compose UI"
+        Home[Home]
+        Mushaf[Mushaf Reader]
+        Prayer[Prayer Times]
+        Qiblah[Qiblah]
+        Azkar[Azkar]
+    end
+
+    subgraph "Domain / Data"
+        Repo[Quran Repository]
+        PrayerCalc[Prayer Time Calculator]
+        LocationSvc[Location Service]
+        AudioPlayer[Media3 Player]
+        DataStore[(DataStore / Room)]
+    end
+
+    subgraph Widgets
+        Glance[Glance Widgets x5]
+    end
+
+    Home --> Repo
+    Mushaf --> Repo
+    Mushaf --> AudioPlayer
+    Prayer --> PrayerCalc
+    Qiblah --> LocationSvc
+    PrayerCalc --> LocationSvc
+    Azkar --> DataStore
+
+    Repo --> DataStore
+    PrayerCalc --> DataStore
+    DataStore --> Glance
+```
+
+Hilt wires repositories and services into both the Activity-hosted Compose tree and
+the Glance widget receivers, so widgets and the app read from the same source of
+truth instead of duplicating state.
