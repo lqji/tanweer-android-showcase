@@ -1,14 +1,10 @@
-# Tanweer (تنوير) — Android
+# Tanweer (تنوير) for Android
 
-A Kotlin + Jetpack Compose port of Tanweer, built for pixel parity with the iOS app —
-same Mushaf typesetting, same prayer time and Qiblah logic, same widget set, ported
-screen-by-screen against the original as a living spec.
+This is the Android version of Tanweer, built with Kotlin and Jetpack Compose. The goal was pixel parity with the iOS app, same Mushaf typesetting, same prayer time and Qiblah logic, same widgets, rebuilt screen by screen against the original.
 
-> This repository is a portfolio case study. The app is closed-source; screenshots,
-> architecture notes, and engineering write-ups live here so the work can be reviewed
-> without exposing the codebase.
+This repo is a portfolio case study. The app itself is closed source, so what you will find here is screenshots, a plain explanation of how it is built, and a few of the harder bugs I ran into along the way.
 
-Not yet published to the Play Store — currently in final release-signing and QA passes.
+Not on the Play Store yet, it is in its final release and QA pass.
 
 ## Screenshots
 
@@ -19,99 +15,30 @@ Not yet published to the Play Store — currently in final release-signing and Q
   <img src="screenshots/04-prayer-times.png" width="180" />
 </p>
 
-## Tech Stack
+## Stack
 
-- **Kotlin, Jetpack Compose** — fully declarative UI, no XML layouts
-- **Hilt** — dependency injection across managers/repositories and the Glance widgets
-- **Glance** — 5 home-screen widgets sharing the same data layer as the app
-- **Gradle version catalogs** — centralized dependency versions across app + widget modules
-- **CoreLocation-equivalent (`FusedLocationProviderClient`)** — Qiblah bearing and prayer-time geolocation
-- **Media3** — Quran recitation playback with background audio support
-- **Release signing pipeline** — keystore-based signing config with an environment-variable fallback for CI, so `assembleRelease` produces a signed build without committing secrets
+Kotlin and Jetpack Compose for the UI, with Hilt handling dependency injection across the app and its home screen widgets. Prayer times and Qiblah direction use the device's location. Audio playback uses Media3. Release builds are signed through a keystore setup that also works from environment variables, so a real signed build can be produced without secrets sitting in the repo.
 
-## Architecture
+## How it is put together
 
-```mermaid
-graph TD
-    subgraph "Compose UI"
-        Home[Home]
-        Mushaf[Mushaf Reader]
-        Prayer[Prayer Times]
-        Qiblah[Qiblah]
-        Azkar[Azkar]
-    end
+Compose screens stay light and just render state. A small set of repositories and services own the actual logic, prayer time calculation, location, the audio player, local storage, and Hilt wires those same instances into both the app and the widgets, so everything reads from one place instead of duplicating state.
 
-    subgraph "Domain / Data"
-        Repo[Quran Repository]
-        PrayerCalc[Prayer Time Calculator]
-        LocationSvc[Location Service]
-        AudioPlayer[Media3 Player]
-        DataStore[(DataStore / Room)]
-    end
+## Some of the harder problems
 
-    subgraph Widgets
-        Glance[Glance Widgets x5]
-    end
+Porting for pixel parity instead of just feature parity meant treating the iOS app as the spec and comparing behavior frame by frame rather than rebuilding from memory. Most of the bugs below only surfaced because of that comparison.
 
-    Home --> Repo
-    Mushaf --> Repo
-    Mushaf --> AudioPlayer
-    Prayer --> PrayerCalc
-    Qiblah --> LocationSvc
-    PrayerCalc --> LocationSvc
-    Azkar --> DataStore
+One of the widgets crashed the moment they rendered, even though everything compiled fine. All five home screen widgets were passing plain numbers into padding and sizing functions, and on this framework a plain number gets treated as a resource id instead of a size. The compiler had no way to catch it. Only a lint check caught it, and it turned out to affect every widget at once.
 
-    Repo --> DataStore
-    PrayerCalc --> DataStore
-    DataStore --> Glance
-```
+There was also a verse numbering bug almost identical to one on the iOS side, same font, same limitation where its automatic digit styling only had rules for one or two digit numbers, so anything past ninety nine came out garbled. Diagnosed by pulling screenshots straight off a device and looking at the pixels rather than guessing from the font itself, and fixed the same way, drawing the circle and the digits separately for longer numbers.
 
-Hilt wires repositories and services into both the Activity-hosted Compose tree and
-the Glance widget receivers, so widgets and the app read from the same source of
-truth instead of duplicating state.
+A smaller one, the playback speed label was being formatted without a locale, so on an Arabic or Urdu device it would quietly switch to different digits and a different decimal separator. Pinning that one label to a fixed locale fixed it without affecting anything else in the app.
 
-## Engineering Highlights
+And a scrubber bug where dragging the audio progress bar could freeze mid drag if the layout shifted at just the wrong moment, because the gesture handling was tied to the scrubber's measured size instead of being independent of it.
 
-**Porting for pixel parity, not just feature parity.** The iOS app was treated as the
-spec: every screen was rebuilt against it for exact spacing, type scale, and behavior
-rather than reinterpreted "in the spirit of" the original. That discipline is what
-surfaced most of the bugs below — they only showed up once behavior was compared
-frame-by-frame against a working reference.
+## Also by me
 
-**A widget crash that only reproduced at render time, not compile time.** All 5 Glance
-home-screen widgets were passing raw `Int` literals to `.padding()` / `.height()` /
-`.width()`. Glance resolves a bare `Int` to the `@DimenRes` resource-ID overload, not
-`dp` — so every widget compiled cleanly and then crashed with
-`Resources.NotFoundException` the instant it rendered. The compiler had no way to
-warn about it; only Android Lint's `ResourceType` check caught it, across all 5
-widgets at once.
+Tanweer for iOS: https://github.com/lqji/tanweer-ios-showcase
+Type Faster: https://github.com/lqji/type-faster-showcase
+Full portfolio: https://github.com/lqji/portfolio
 
-**An RTL ayah-badge bug identical to the iOS one, hit independently on a different
-platform.** Same HAFS font, same `calt` contextual-alternates limitation to 1–2 digit
-runs — any 3-digit ayah number (100+) rendered as garbled or dropped digits. Diagnosed
-by pulling `adb exec-out screencap` frames and inspecting pixel regions rather than
-guessing from the font's substitution tables, and fixed the same way as iOS: draw the
-ornate circle and the digits as two separate draw calls for 3+ digit badges, with the
-digits in a plain typeface with no Quranic ligature rules.
-
-**Locale-aware number formatting, forced.** The playback-speed label used
-`String.format` without a `Locale`, so on an Arabic or Urdu device it silently
-rendered Arabic-Indic digits and a different decimal separator inside what's meant to
-be a plain "1.5x" UI label. Pinned to `Locale.US` for that one label rather than the
-device locale.
-
-**A drag gesture that died on relayout.** The premium audio scrubber's
-`pointerInput` was keyed on the scrubber's measured size — so a mid-drag relayout
-(e.g. text reflow while scrubbing) recreated the pointer input handler and silently
-ate the touch-up event, leaving the drag stuck. Fixed by decoupling the gesture key
-from layout-dependent state so a relayout mid-gesture no longer cancels it.
-
-## More from this developer
-
-- [Tanweer for iOS](https://github.com/lqji/tanweer-ios-showcase) — the original, native Swift/SwiftUI app
-- [Type Faster](https://github.com/lqji/type-faster-showcase) — a typing test with real-time multiplayer racing
-- [Full portfolio →](https://github.com/lqji/portfolio)
-
----
-
-Built and maintained by **Ahmed Abdullah**.
+Ahmed Abdullah
